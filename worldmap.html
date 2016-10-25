@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+
+<style>
+
+  html, body{
+    margin: 0;
+    padding: 0;
+    font-family: Glegoo;
+    font-weight: 700;
+    font-size: 10pt;
+    text-anchor: middle;
+  }
+  /*
+  path {
+    stroke: rgb(34,19,11);
+    stroke-width: 1;
+    fill: rgb(34,19,11);
+  }
+  path:hover{
+    fill: rgb(34,19,11);
+    stroke: rgb(240,74,36);
+    stroke-width: 2.5;
+    stroke-dasharray: 5,5;
+  }
+  .noselect {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    cursor: default;
+  }
+  .text{
+    fill: rgb(255,255,255);
+    pointer-events: none;
+  }
+  .pt{
+    fill: rgb(240,74,36);
+  }
+  .pt-data{
+    fill: rgb(240,74,36);
+  }
+  .hidden {
+    display: none;
+  }
+  div.tooltip {
+    color: white;
+    background: rgb(240,74,36);
+    position: absolute;
+  }
+*/
+</style>
+
+<head>
+  <meta charset="utf-8"></meta>
+  <title>Map</title>
+  <link href="http://fonts.googleapis.com/css?family=Glegoo:400,700" rel="stylesheet" type="text/css">
+  <script type="text/javascript" src="./libraries/d3.v3.min.js"></script>
+  <script type="text/javascript" src="./libraries/topojson.v0.min.js"></script>
+  <script type="text/javascript" src="./libraries/queue.v1.min.js"></script>
+  <script type="text/javascript" src="./myExtraGraphicElement.js"></script>
+  <script type="text/javascript" src="./myGraphicElement.js"></script>
+
+
+</head>
+
+<body>
+  <script type="text/javascript">
+
+    // wegeja@iam
+    // institute of architecture and media
+    // infoviz 2015
+
+    var margin = 4;
+   // var width = window.innerWidth-margin*3;
+    // var height = window.innerHeight-margin*3;
+
+    var width = 1600;
+    var height = 800;
+
+    var svgCanvas, g, projection, path, tooltip;
+
+    setup();
+
+    function setup() {
+
+      svgCanvas = d3.select("body").append("svg")
+        .attr("width", width)
+        .attr("height", height);
+
+      g = svgCanvas.append("g");
+
+      tooltip = d3.select("body").append("div").attr("class", "tooltip hidden");
+
+      //projections for worldmap
+      //projection = d3.geo.stereographic()
+      projection = d3.geo.equirectangular()
+      //projection = d3.geo.azimuthalEquidistant()
+      //projection = d3.geo.mercator()
+        .center([0, 25])
+        .translate([(width/2), (height/2)])
+        .scale( width / 2 / Math.PI)
+        .rotate([349,0]);
+      path = d3.geo.path().projection(projection);
+
+      //asynchron loading
+      //D3 code running before your file has actually loaded.?
+      //Queue is a plugin that loads external files into the script
+      //and ensures each file is completely loaded before allowing
+      //the script to continue running.
+      queue()
+        .defer(d3.json, "./data/welt_lQ.topojson")
+        .defer(d3.csv, "./data/citycoords+data.csv")
+        .await(draw);
+
+      //if you have several files
+      /*
+      queue()
+        .defer(d3.json, "./data/welt_lQ.topojson")
+        .defer(d3.csv, "./data/citycoords+data.csv")
+        .defer(d3.csv, "./data/fileA.csv")
+        .defer(d3.csv, "./data/fileB.csv")
+        .await(draw);
+
+      //just add an additional argument
+      function draw(error, obj, csv, fileA, fileB) {
+        -- your interactive element --
+      }
+      */
+
+    }//end setup
+
+
+
+
+    //draws worldmap and loaded cities
+    function draw(error, obj, csv) {
+
+      //worldmap as vector
+      var countries = topojson.object(obj, obj.objects.welt_epsg4326).geometries;
+      //draws worldmap countries
+      //addCountries(countries);
+
+
+      // --------- YOUR INTERACTIVE ELEMENT ---------
+
+      //city locations from "citycoords+data.csv" in the data folder
+      //you can query your cities by using the geocode.html file
+    //------------------------linear Array for GDP-----------------------------------------
+    var gdp_arr = [];
+    for(var i=0; i<csv.length; i++){
+      gdp_arr.push( parseFloat( csv[i].GDP ) );
+    }
+
+    var min_gdp = d3.min(gdp_arr);
+    var max_gdp = d3.max(gdp_arr);
+    gdp_arr = [];
+    var norm_gdp = d3.scale.linear()
+            .domain([min_gdp,max_gdp])
+            .range([10,500]);
+
+    console.log( "norm: " + norm_gdp(min_gdp) );
+    //------------------------linear Array for BlauerHalbkreis----------------------------------------
+
+   var blau_arr = [];
+    for(var i=0; i<csv.length; i++){
+      blau_arr.push( parseFloat( csv[i].Ankommende ) );
+    }
+
+    var min_blau = d3.min(blau_arr);
+    var max_blau = d3.max(blau_arr);
+    blau_arr = [];
+    var norm_blau = d3.scale.linear()
+            .domain([min_blau,max_blau])
+            .range([20,170]);
+
+    console.log( "norm: " + norm_blau(min_blau) );
+
+     //------------------------linear Array for RoterHalbkreis----------------------------------------
+
+   var rot_arr = [];
+    for(var i=0; i<csv.length; i++){
+      rot_arr.push( parseFloat( csv[i].Fluchtlinge ) );
+    }
+
+    var min_rot = d3.min(rot_arr);
+    var max_rot = d3.max(rot_arr);
+    rot_arr = [];
+    var norm_rot = d3.scale.linear()
+            .domain([min_rot,max_rot])
+            .range([10,170]);
+
+    console.log( "norm: " + norm_rot(min_rot) );
+    /*
+    for(var i=0; i<csv.length; i++){
+      console.log( "norm: " + norm_gdp( parseFloat( csv[i].GDP ) ) );
+    }
+    */
+
+
+        //------------------------linear Array for Poulation-----------------------------------------
+    var pop_arr = [];
+    for(var i=0; i<csv.length; i++){
+      pop_arr.push( parseFloat( csv[i].Population ) );
+    }
+
+    var min_pop = d3.min(pop_arr);
+    var max_pop = d3.max(pop_arr);
+    pop_arr = [];
+    var norm_pop = d3.scale.linear()
+            .domain([min_pop,max_pop])
+            .range([10,500]);
+
+    console.log( "norm: " + norm_pop(min_pop) );
+
+    //create group---------------------------------------------------------------------
+      createGroup();
+              function createGroup(){
+          svg = d3.select("svg") //svg-element <svg></svg> auswählen
+            .append("g") //svg gruppe <g></g> hinzufüge
+            .attr("id", "Alles"); //eindeutige bezeichnung der gruppe hinzufügen
+        }
+
+
+    //create NeutralElement------------------------------------------------------------------
+      //DrawElementNeutral();
+
+            function DrawElementNeutral(){
+
+
+          svg = d3.select("svg") //svg-element <svg></svg> auswählen
+            .append("g") //svg gruppe <g></g> hinzufügen
+            //.attr('transform', "translate("+data.kx*20+","+data.ky*20+")")
+            //.attr("transform", "scale(0.1,0.1)")
+                .attr('transform', "translate(200,200)")
+            .attr("id", "Neutral"); //eindeutige bezeichnung der gruppe hinzufügen
+            //rotenenutralerstellen---------------------
+             var ArcRotNeutral=d3.svg.arc()
+              .innerRadius(0)
+              .outerRadius(90)
+              .startAngle(-Math.PI / 2)
+              .endAngle(Math.PI / 2)
+
+
+
+              svg
+                .append('g')
+                .attr("id", "NeutralRot")
+                 .append('path')
+                  .attr('d', ArcRotNeutral)
+                  .attr("id","ArcRot")
+                 .attr('transform', "translate(1100, 95) rotate(-30)")
+                 .attr("fill", "rgba(255,64,66,1)")
+
+            //-----------------------------------------
+
+            //blauneutral erstellen-----------------------------
+
+            var ArcBlau=d3.svg.arc()
+              .innerRadius(0)
+              .outerRadius(90)
+              .startAngle(-Math.PI / 2)
+              .endAngle(Math.PI / 2)
+
+              svg
+              .append('g')
+              .attr("id", "NeutralBlau")
+                .append('path')
+                .attr('d', ArcBlau)
+                .attr("id","ArcBlau")
+                .attr('transform', "translate(1100, 150) rotate(-210)")
+                .attr("fill", "rgba(64,95,255,1)")
+
+              //createText(id);
+              //animateBlue(id);
+              //createpath(id);
+        }
+
+
+    //Ende NeutralElement------------------------------------------------------------------
+
+      var active = "test";
+
+      csv.forEach( function(data, index){
+
+        //the circle is just a placeholder
+        //addCircle(data.longitude, data.latitude, data);
+        //addText(data.longitude, data.latitude, data);
+
+        //console.log( data );
+        var cx = projection([data.longitude, data.latitude])[0];
+        var cy = projection([data.longitude, data.latitude])[1];
+
+        new GraphicElement(index, data, cx, cy, norm_gdp, norm_blau, norm_rot, norm_pop);
+
+
+        new ExtraGraphicElement(999-index, data, 1000, 100, norm_gdp, norm_blau, norm_rot, norm_pop);
+
+   /*     g.append("circle")
+          .attr("cx", cx)
+          .attr("cy", cy)
+          .attr("r", 0.1)
+          .attr("fill", "red") */;
+
+        // DRAW YOUR INTERACTIVE ELEMENT HERE
+
+
+        d3.select()
+
+           TranslateAlles();
+
+        function TranslateAlles(){
+          d3.select("#Alles")
+            .attr('transform', "translate(-1900,-600) scale(2.7)")
+        }
+
+
+      });
+
+
+
+
+
+
+
+    }// end draw
+
+
+    function addCountries(countries, data) {
+
+      g.append("g")
+        .selectAll("path")
+        .data(countries)
+        .enter()
+          .append("path")
+          .attr("d", path)
+          /*
+          .on("mouseenter", function(d){
+            d3.select(this).moveToFront();
+            //console.log(d.properties);
+          })
+          //tooltip for countries
+          .on("mousemove", function(d,i) {
+            var mouse = d3.mouse(svgCanvas.node()).map( function(d) { return parseInt(d); } );
+            tooltip.classed("hidden", false)
+              .attr("style", "left:"+(mouse[0]+10)+"px;top:"+(mouse[1]+20)+"px")
+              .html(d.properties.NAME_DE);
+          })
+          .on("mouseout",  function(d,i) {
+            tooltip.classed("hidden", true);
+          })
+        */
+        ;
+
+    }//end addcoutries
+
+
+
+
+    function addCircle(lat,lon,data) {
+
+      var pt = g.append("g")
+                .attr("class", "point-data");
+      var x = projection([lat,lon])[0];
+      var y = projection([lat,lon])[1];
+
+      pt.append("circle")
+        .attr("cx", x)
+        .attr("cy", y)
+        .attr("r", data.r*1.2)
+        .attr("class", "pt-data")
+        .on("mouseenter", function(d,i){
+          d3.select(this).attr("r", data.r*1.5)
+        })
+        .on("mouseout",  function(d,i) {
+          d3.select(this).attr("r", data.r*1.2)
+        });
+
+    }//end addCircle
+
+
+    function addText(lat,lon,data) {
+
+      var pt = g.append("g").attr("class", "point");
+      var x = projection([lat,lon])[0];
+      var y = projection([lat,lon])[1];
+
+      pt.append("text")
+        .attr("x", x)
+        .attr("y", y)
+        .attr("class","text")
+        .attr("dy", "0.38em")
+        .text(data.city);
+
+    }//end addText
+
+
+    //function to bring element to the front
+    d3.selection.prototype.moveToFront = function() {
+      return this.each(function(){
+        this.parentNode.appendChild(this);
+      });
+    };
+
+
+
+  </script>
+</body>
